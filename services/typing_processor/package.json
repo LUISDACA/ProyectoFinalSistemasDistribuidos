@@ -1,0 +1,9 @@
+{
+  "name": "typing_processor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "kafkajs": "^2.2.4"
+  }
+}

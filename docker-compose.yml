@@ -1,0 +1,138 @@
+# Proyecto: Stream-Chat
+# Arquitectura orquestada con Docker Compose.
+# - RabbitMQ actúa como Fuente de Verdad (SoT) para los mensajes reales.
+# - Kafka procesa eventos de alta frecuencia (typing) para deducir estado.
+# - Servicios Node conectan ambos brokers y exponen APIs/WebSockets.
+services:
+  # Broker de mensajería AMQP (Fuente de Verdad de chat)
+  rabbitmq:
+    image: rabbitmq:3-management
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "15673:15672"
+
+  # Zookeeper requerido por Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "2181:2181"
+
+  # Broker Kafka para eventos de typing y auditoría
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+
+  # API HTTP para publicar mensajes reales en RabbitMQ (topic)
+  chat_api:
+    build: ./services/chat_api
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - EXCHANGE_CHAT=chat_messages
+      - ROUTING_PREFIX=chat
+      - PORT=3001
+    depends_on:
+      - rabbitmq
+    ports:
+      - "3001:3001"
+
+  # API HTTP para publicar eventos de "typing" en Kafka
+  typing_api:
+    build: ./services/typing_api
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - TOPIC_TYPING=typing_events
+      - PORT=3002
+    depends_on:
+      - kafka
+    ports:
+      - "3002:3002"
+
+  # Backend WebSocket que consume mensajes (RabbitMQ) y los envía al cliente
+  chat_backend:
+    build: ./services/chat_backend
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - EXCHANGE_CHAT=chat_messages
+      - PORT=8081
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8085:8081"
+
+  # Procesador stateful: consume typing (Kafka) y publica estado (RabbitMQ)
+  typing_processor:
+    build: ./services/typing_processor
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - TOPIC_TYPING=typing_events
+      - RABBITMQ_URL=amqp://rabbitmq
+      - EXCHANGE_STATUS=status_updates
+    depends_on:
+      - kafka
+      - rabbitmq
+
+  # Backend WebSocket que difunde estado de "typing" desde RabbitMQ
+  status_backend:
+    build: ./services/status_backend
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - EXCHANGE_STATUS=status_updates
+      - PORT=8082
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8086:8082"
+
+  # Puente auditoría: RabbitMQ (chat_messages) -> Kafka (message_audit_log)
+  audit_bridge:
+    build: ./services/audit_bridge
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - EXCHANGE_CHAT=chat_messages
+      - KAFKA_BROKER=kafka:9092
+      - TOPIC_AUDIT=message_audit_log
+    depends_on:
+      - rabbitmq
+      - kafka
+
+  # Servicio de analítica que consume el log de auditoría en Kafka
+  analytics_service:
+    build: ./services/analytics_service
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - TOPIC_AUDIT=message_audit_log
+    depends_on:
+      - kafka
+
+  # Servidor estático para el cliente (chat.html)
+  client_web:
+    image: nginx:alpine
+    volumes:
+      - ./client:/usr/share/nginx/html:ro
+    ports:
+      - "8088:80"
+    depends_on:
+      - chat_backend
+      - status_backend
+
+networks:
+  default:
+    driver: bridge
