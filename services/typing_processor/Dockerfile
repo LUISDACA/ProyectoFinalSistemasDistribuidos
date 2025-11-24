@@ -1,5 +1,5 @@
 FROM node:18-alpine
-# Procesador stateful: Kafka -> RabbitMQ, deduce estado TYPING/STOPPED
+# Stateful processor: Kafka -> RabbitMQ, deduces TYPING/STOPPED status
 WORKDIR /app
 COPY package.json .
 RUN npm install --production

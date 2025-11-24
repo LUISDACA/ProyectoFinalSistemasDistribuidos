@@ -1,9 +1,9 @@
 /*
-  Servicio: audit_bridge
-  Propósito: Mover la "Verdad" del chat desde RabbitMQ a Kafka para auditoría.
-  Flujo:
-    - Consume exchange topic "chat_messages" (binding chat.#)
-    - Publica en topic Kafka "message_audit_log" con key = group
+  Service: audit_bridge
+  Purpose: Move the chat "Source of Truth" from RabbitMQ to Kafka for auditing.
+  Flow:
+    - Consume topic exchange "chat_messages" (binding chat.#)
+    - Publish to Kafka topic "message_audit_log" with key = group
 */
 const amqp = require('amqplib');
 const { Kafka } = require('kafkajs');
@@ -16,7 +16,7 @@ const TOPIC_AUDIT = process.env.TOPIC_AUDIT || 'message_audit_log';
 const kafka = new Kafka({ brokers: [KAFKA_BROKER] });
 const producer = kafka.producer();
 
-// Inicializa canales y arranca el puente
+// Initialize channels and start the bridge
 async function run() {
   const conn = await amqp.connect(RABBITMQ_URL);
   const ch = await conn.createChannel();

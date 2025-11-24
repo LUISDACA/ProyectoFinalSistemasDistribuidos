@@ -1,5 +1,5 @@
 FROM node:18-alpine
-# Backend WebSocket de chat: consume RabbitMQ y envía mensajes a clientes
+# Chat WebSocket backend: consumes RabbitMQ and sends messages to clients
 WORKDIR /app
 COPY package.json .
 RUN npm install --production

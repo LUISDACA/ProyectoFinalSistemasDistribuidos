@@ -1,10 +1,10 @@
 /*
-  Servicio: typing_processor
-  Propósito: Consumir eventos "typing" de Kafka y deducir estado por usuario.
-  Lógica:
-    - Mantiene Map "last" con el último timestamp de typing por (group:user)
-    - Cada 1s calcula si <3s => TYPING, >3s => STOPPED
-    - Solo publica en RabbitMQ cuando el estado cambia
+  Service: typing_processor
+  Purpose: Consume "typing" events from Kafka and deduce per-user status.
+  Logic:
+    - Maintains Map "last" with the latest typing timestamp per (group:user)
+    - Every 1s computes if <3s => TYPING, >3s => STOPPED
+    - Publishes to RabbitMQ only when the status changes
 */
 const { Kafka } = require('kafkajs');
 const amqp = require('amqplib');
@@ -14,7 +14,7 @@ const TOPIC_TYPING = process.env.TOPIC_TYPING || 'typing_events';
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 const EXCHANGE_STATUS = process.env.EXCHANGE_STATUS || 'status_updates';
 
-// Cliente Kafka y consumer con groupId estable
+// Kafka client and consumer with stable groupId
 const kafka = new Kafka({ brokers: [KAFKA_BROKER] });
 const consumer = kafka.consumer({ groupId: 'typing-processor' });
 
@@ -22,25 +22,25 @@ let channel;
 const last = new Map();
 const state = new Map();
 
-// Prepara canal AMQP y fanout exchange para difundir estado
+// Prepare AMQP channel and fanout exchange to broadcast status
 async function setupRabbit() {
   const conn = await amqp.connect(RABBITMQ_URL);
   channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE_STATUS, 'fanout', { durable: true });
 }
 
-// Determina estado actual a partir de la ventana de 3s
+// Determine current status from a 3s window
 function currentState(ms) {
   return ms < 3000 ? 'TYPING' : 'STOPPED';
 }
 
-// Publica actualización de estado en RabbitMQ (no persistente)
+// Publish status update to RabbitMQ (non-persistent)
 async function publishStatus(user, group, status) {
   const payload = { user, group, status, ts: Date.now() };
   channel.publish(EXCHANGE_STATUS, '', Buffer.from(JSON.stringify(payload)), { persistent: false });
 }
 
-// Bucle principal: consume Kafka y programa revisión periódica
+// Main loop: consume Kafka and schedule periodic check
 async function run() {
   await setupRabbit();
   await consumer.connect();

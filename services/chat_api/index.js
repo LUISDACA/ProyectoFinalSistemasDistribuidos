@@ -1,16 +1,16 @@
 /*
-  Servicio: chat_api
-  Propósito: Endpoint HTTP para enviar mensajes reales de chat.
-  Flujo:
-    - Recibe POST /message con { user, group, text }
-    - Publica JSON persistente en RabbitMQ (exchange topic "chat_messages")
-    - Usa routing key "chat.<grupo>" para enrutar a la cola del grupo
+  Service: chat_api
+  Purpose: HTTP endpoint to send real chat messages.
+  Flow:
+    - Receives POST /message with { user, group, text }
+    - Publishes persistent JSON to RabbitMQ (topic exchange "chat_messages")
+    - Uses routing key "chat.<group>" to route to the group's queue
 */
 const express = require('express');
 const cors = require('cors');
 const amqp = require('amqplib');
 
-// Configuración por entorno (docker-compose define variables apuntando a rabbitmq)
+// Environment configuration (docker-compose sets variables pointing to RabbitMQ)
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 const EXCHANGE_CHAT = process.env.EXCHANGE_CHAT || 'chat_messages';
 const ROUTING_PREFIX = process.env.ROUTING_PREFIX || 'chat';
@@ -21,14 +21,14 @@ app.use(cors());
 app.use(express.json());
 
 let channel;
-// Crea canal AMQP y asegura el topic exchange duradero
+// Create AMQP channel and ensure durable topic exchange
 async function setupRabbit() {
   const conn = await amqp.connect(RABBITMQ_URL);
   channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE_CHAT, 'topic', { durable: true });
 }
 
-// Endpoint principal para publicar la "Verdad" del chat
+// Main endpoint to publish the chat "Source of Truth"
 app.post('/message', async (req, res) => {
   try {
     const { user, group, text } = req.body || {};
@@ -43,7 +43,7 @@ app.post('/message', async (req, res) => {
   }
 });
 
-// Inicialización HTTP tras preparar RabbitMQ
+// Start HTTP server after preparing RabbitMQ
 setupRabbit().then(() => {
   app.listen(PORT, () => {});
 }).catch(() => {

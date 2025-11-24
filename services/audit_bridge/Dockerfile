@@ -1,5 +1,5 @@
 FROM node:18-alpine
-# Puente de auditoría: replica mensajes de RabbitMQ en Kafka para analítica
+# Audit bridge: replicates RabbitMQ messages into Kafka for analytics
 WORKDIR /app
 COPY package.json .
 RUN npm install --production

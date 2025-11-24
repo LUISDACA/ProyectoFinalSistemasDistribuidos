@@ -1,10 +1,10 @@
-# Proyecto: Stream-Chat
-# Arquitectura orquestada con Docker Compose.
-# - RabbitMQ actúa como Fuente de Verdad (SoT) para los mensajes reales.
-# - Kafka procesa eventos de alta frecuencia (typing) para deducir estado.
-# - Servicios Node conectan ambos brokers y exponen APIs/WebSockets.
+# Project: Stream-Chat
+# Architecture orchestrated with Docker Compose.
+# - RabbitMQ acts as Source of Truth (SoT) for real messages.
+# - Kafka processes high-frequency events (typing) to deduce state.
+# - Node services connect both brokers and expose APIs/WebSockets.
 services:
-  # Broker de mensajería AMQP (Fuente de Verdad de chat)
+  # AMQP messaging broker (chat Source of Truth)
   rabbitmq:
     image: rabbitmq:3-management
     healthcheck:
@@ -15,7 +15,7 @@ services:
     ports:
       - "15673:15672"
 
-  # Zookeeper requerido por Kafka
+  # Zookeeper required by Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.3
     environment:
@@ -24,7 +24,7 @@ services:
     ports:
       - "2181:2181"
 
-  # Broker Kafka para eventos de typing y auditoría
+  # Kafka broker for typing events and audit
   kafka:
     image: confluentinc/cp-kafka:7.5.3
     environment:
@@ -40,7 +40,7 @@ services:
     ports:
       - "9092:9092"
 
-  # API HTTP para publicar mensajes reales en RabbitMQ (topic)
+  # HTTP API to publish real messages to RabbitMQ (topic)
   chat_api:
     build: ./services/chat_api
     environment:
@@ -53,7 +53,7 @@ services:
     ports:
       - "3001:3001"
 
-  # API HTTP para publicar eventos de "typing" en Kafka
+  # HTTP API to publish "typing" events to Kafka
   typing_api:
     build: ./services/typing_api
     environment:
@@ -65,7 +65,7 @@ services:
     ports:
       - "3002:3002"
 
-  # Backend WebSocket que consume mensajes (RabbitMQ) y los envía al cliente
+  # WebSocket backend that consumes messages (RabbitMQ) and sends them to the client
   chat_backend:
     build: ./services/chat_backend
     environment:
@@ -77,7 +77,7 @@ services:
     ports:
       - "8085:8081"
 
-  # Procesador stateful: consume typing (Kafka) y publica estado (RabbitMQ)
+  # Stateful processor: consumes typing (Kafka) and publishes status (RabbitMQ)
   typing_processor:
     build: ./services/typing_processor
     environment:
@@ -89,7 +89,7 @@ services:
       - kafka
       - rabbitmq
 
-  # Backend WebSocket que difunde estado de "typing" desde RabbitMQ
+  # WebSocket backend that broadcasts "typing" status from RabbitMQ
   status_backend:
     build: ./services/status_backend
     environment:
@@ -101,7 +101,7 @@ services:
     ports:
       - "8086:8082"
 
-  # Puente auditoría: RabbitMQ (chat_messages) -> Kafka (message_audit_log)
+  # Audit bridge: RabbitMQ (chat_messages) -> Kafka (message_audit_log)
   audit_bridge:
     build: ./services/audit_bridge
     environment:
@@ -113,7 +113,7 @@ services:
       - rabbitmq
       - kafka
 
-  # Servicio de analítica que consume el log de auditoría en Kafka
+  # Analytics service that consumes the audit log in Kafka
   analytics_service:
     build: ./services/analytics_service
     environment:
@@ -122,7 +122,7 @@ services:
     depends_on:
       - kafka
 
-  # Servidor estático para el cliente (chat.html)
+  # Static server for the client (chat.html)
   client_web:
     image: nginx:alpine
     volumes:

@@ -1,9 +1,9 @@
 /*
-  Servicio: chat_backend
-  Entrega mensajes reales por WebSocket a miembros del grupo.
-  - Consume RabbitMQ (exchange topic "chat_messages")
-  - Colas duraderas por grupo con binding "chat.<grupo>"
-  - Difunde a clientes conectados al grupo
+  Service: chat_backend
+  Delivers real messages via WebSocket to group members.
+  - Consumes RabbitMQ (topic exchange "chat_messages")
+  - Durable per-group queues bound with "chat.<group>"
+  - Broadcasts to clients connected to the group
 */
 const amqp = require('amqplib');
 const { WebSocketServer } = require('ws');
@@ -13,21 +13,21 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 const EXCHANGE_CHAT = process.env.EXCHANGE_CHAT || 'chat_messages';
 const PORT = Number(process.env.PORT || 8081);
 
-// Servidor WebSocket para clientes del chat
+// WebSocket server for chat clients
 const wss = new WebSocketServer({ port: PORT });
 
 let channel;
 const groupQueues = new Map();
 const clients = new Map();
 
-// Prepara conexión y exchange en RabbitMQ
+// Prepare connection and exchange in RabbitMQ
 async function setupRabbit() {
   const conn = await amqp.connect(RABBITMQ_URL);
   channel = await conn.createChannel();
   await channel.assertExchange(EXCHANGE_CHAT, 'topic', { durable: true });
 }
 
-// Crea cola y consumidor por grupo bajo demanda
+// Create queue and consumer per group on demand
 async function ensureGroupConsumer(group) {
   const g = String(group).toLowerCase();
   if (groupQueues.has(g)) return;
@@ -59,7 +59,7 @@ wss.on('connection', async (ws, req) => {
     const g = String(group).toLowerCase();
     if (!clients.has(g)) clients.set(g, new Set());
     clients.get(g).add(ws);
-    // Asegura consumidor del grupo
+    // Ensure group's consumer
     await ensureGroupConsumer(g);
     ws.on('close', () => {
       const set = clients.get(g);
@@ -73,5 +73,5 @@ wss.on('connection', async (ws, req) => {
   }
 });
 
-// Inicialización
+// Initialization
 setupRabbit().catch(() => process.exit(1));

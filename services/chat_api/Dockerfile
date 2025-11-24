@@ -1,5 +1,5 @@
 FROM node:18-alpine
-# Contenedor de la API de chat: publica mensajes en RabbitMQ (Fuente de Verdad)
+# Chat API container: publishes messages to RabbitMQ (Source of Truth)
 WORKDIR /app
 COPY package.json .
 RUN npm install --production

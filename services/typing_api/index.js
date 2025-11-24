@@ -1,11 +1,11 @@
 const express = require('express');
 /*
-  Servicio: typing_api
-  Propósito: Endpoint HTTP para eventos "está escribiendo".
-  Flujo:
-    - Recibe POST /typing con { user, group }
-    - Publica JSON en Kafka (topic "typing_events") usando group como key
-    - El procesador stateful leerá este flujo para deducir estado
+  Service: typing_api
+  Purpose: HTTP endpoint for "is typing" events.
+  Flow:
+    - Receives POST /typing with { user, group }
+    - Publishes JSON to Kafka (topic "typing_events") using group as key
+    - The stateful processor will read this stream to deduce status
 */
 const { Kafka } = require('kafkajs');
 const cors = require('cors');
@@ -19,11 +19,11 @@ const kafka = new Kafka({ brokers: [KAFKA_BROKER] });
 const producer = kafka.producer();
 
 const app = express();
-// Habilita CORS para llamadas desde el cliente web
+// Enable CORS for calls from the web client
 app.use(cors());
 app.use(express.json());
 
-// Endpoint principal de eventos de "typing"
+// Main endpoint for "typing" events
 app.post('/typing', async (req, res) => {
   try {
     const { user, group } = req.body || {};
@@ -37,7 +37,7 @@ app.post('/typing', async (req, res) => {
   }
 });
 
-// Inicializa el productor Kafka y arranca la API
+// Initialize Kafka producer and start the API
 producer.connect().then(() => {
   app.listen(PORT, () => {});
 }).catch(() => process.exit(1));

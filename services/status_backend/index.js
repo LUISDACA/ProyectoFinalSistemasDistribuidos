@@ -1,8 +1,8 @@
 /*
-  Servicio: status_backend
-  Difunde el estado "está escribiendo" por WebSocket.
-  - Consume RabbitMQ (exchange fanout "status_updates")
-  - No requiere enrutado por clave; todos los grupos comparten el mismo flujo
+  Service: status_backend
+  Broadcasts the "is typing" status over WebSocket.
+  - Consumes RabbitMQ (fanout exchange "status_updates")
+  - No routing key required; all groups share the same stream
 */
 const amqp = require('amqplib');
 const { WebSocketServer } = require('ws');
@@ -12,13 +12,13 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 const EXCHANGE_STATUS = process.env.EXCHANGE_STATUS || 'status_updates';
 const PORT = Number(process.env.PORT || 8082);
 
-// Servidor WebSocket para estado
+// WebSocket server for status
 const wss = new WebSocketServer({ port: PORT });
 
 let channel;
 const clients = new Map();
 
-// Prepara fanout exchange y una cola efímera (exclusive)
+// Prepare fanout exchange and an ephemeral exclusive queue
 async function setupRabbit() {
   const conn = await amqp.connect(RABBITMQ_URL);
   channel = await conn.createChannel();
@@ -61,5 +61,5 @@ wss.on('connection', async (ws, req) => {
   }
 });
 
-// Inicialización
+// Initialization
 setupRabbit().catch(() => process.exit(1));

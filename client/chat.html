@@ -1,16 +1,16 @@
 <!doctype html>
 <!--
-  Cliente Web de Stream-Chat
-  Se conecta a dos WebSockets:
-    - Mensajes reales: ws://localhost:8085/?group=<Grupo>
-    - Estado typing:  ws://localhost:8086/?group=<Grupo>
-  También envía POST a:
+  Stream-Chat Web Client
+  Connects to two WebSockets:
+    - Real messages: ws://localhost:8085/?group=<Group>
+    - Typing status: ws://localhost:8086/?group=<Group>
+  Also sends POST to:
     - http://localhost:3001/message
     - http://localhost:3002/typing
-  Uso:
-    - Abrir dos pestañas con ?user=<Nombre>&group=<Grupo>
-    - Cuando uno escribe, el otro ve "<user> está escribiendo..."
-    - Al enviar, ambos ven "<user>: <texto>"
+  Usage:
+    - Open two tabs with ?user=<Name>&group=<Group>
+    - When one types, the other sees "<user> is typing..."
+    - On send, both see "<user>: <text>"
 -->
 <html lang="es">
 <head>
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Stream Chat</title>
   <style>
-    /* Estilos básicos de la UI del chat */
+    /* Basic chat UI styles */
     body { font-family: system-ui, sans-serif; margin: 20px; }
     #messages { border: 1px solid #ccc; padding: 10px; height: 200px; overflow: auto; }
     #status { color: #666; height: 24px; }
@@ -40,7 +40,7 @@
   <div id="messages"></div>
   <div id="timeline" style="border:1px solid #ccc; padding:10px; margin-top:10px; height:160px; overflow:auto"></div>
   <script>
-    // Referencias a elementos del DOM
+    // DOM element references
     const userEl = document.getElementById('user');
     const groupEl = document.getElementById('group');
     const textEl = document.getElementById('text');
@@ -48,7 +48,7 @@
     const messagesEl = document.getElementById('messages');
     const statusEl = document.getElementById('status');
 
-    // Conectamos a ambos WebSockets (mensajes y estado) del grupo
+    // Connect to both WebSockets (messages and status) for the group
     function connectWS() {
       const g = encodeURIComponent(groupEl.value);
       const wsMsg = new WebSocket(`ws://localhost:8085/?group=${g}`);
@@ -71,13 +71,13 @@
       };
     }
 
-    // Helper para POST JSON
+    // Helper to POST JSON
     async function postJSON(url, body) {
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       return res.json();
     }
 
-    // Enviar mensaje real (RabbitMQ)
+    // Send real message (RabbitMQ)
     sendBtn.onclick = () => {
       postJSON('http://localhost:3001/message', { user: userEl.value, group: groupEl.value, text: textEl.value });
       textEl.value = '';
@@ -85,7 +85,7 @@
     };
 
     let typingTimer;
-    // Emitir evento de typing (Kafka) al escribir en la caja de texto
+    // Emit typing event (Kafka) on input
     textEl.addEventListener('input', () => {
       postJSON('http://localhost:3002/typing', { user: userEl.value, group: groupEl.value });
       clearTimeout(typingTimer);
@@ -93,7 +93,7 @@
       log(`Typing enviado: ${userEl.value} -> ${groupEl.value}`);
     });
 
-    // Añade entrada al timeline inferior con marca de tiempo
+    // Append entry to bottom timeline with timestamp
     function log(msg) {
       const t = document.getElementById('timeline');
       const div = document.createElement('div');
@@ -106,7 +106,7 @@
       t.scrollTop = t.scrollHeight;
     }
 
-    // Simulación del flujo: typing (t0, t+1s) y luego mensaje (t+4s)
+    // Flow simulation: typing (t0, t+1s) then message (t+4s)
     document.getElementById('simulate').onclick = () => {
       const user = userEl.value;
       const group = groupEl.value;
@@ -123,7 +123,7 @@
       }, 4000);
     };
 
-    // Inicializa usuario/grupo desde querystring (?user=&group=)
+    // Initialize user/group from querystring (?user=&group=)
     const params = new URLSearchParams(location.search);
     const qpUser = params.get('user');
     const qpGroup = params.get('group');

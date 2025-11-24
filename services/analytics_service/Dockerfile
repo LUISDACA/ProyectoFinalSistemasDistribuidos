@@ -1,5 +1,5 @@
 FROM node:18-alpine
-# Servicio de analítica: consume Kafka y reporta métricas básicas por consola
+# Analytics service: consumes Kafka and reports basic metrics to console
 WORKDIR /app
 COPY package.json .
 RUN npm install --production
